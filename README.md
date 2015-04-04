@@ -1,2 +1,2 @@
-# 2fab
-Two Factor Authentication with a Bourne Shell script.
+# crab
+Challenge-Response Authentication with a Bourne Shell script.
