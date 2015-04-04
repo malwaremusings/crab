@@ -1,21 +1,55 @@
 #!/bin/sh
 
+#
+# A. prevent interruptions from sigint, sigquit, and sigkill
+#      without this, an attacker can press ctrl-c to interrupt this .profile, 
+#      and end up at a shell prompt without the stage 2 (security) script 
+#      running to further authenticate them.
+#
 trap "" 2 3 15
 
+#
+# B. present the challenge in a non-obvious way
+#    then read the response from the user.
+#
 echo "`date -d \"@\`stat --printf=%Y $HOME/.profile.stage2\`\" '+1%d1%M'` bytes free"
 echo "Press RETURN to continue"
 read reply
 
+#
+# C. make sure that the mostly unpredictable file name that we've chosen for 
+#      the stage 2 file doesn't already exist as a directory or sym link (an 
+#      attack to cause us to overwrite a different file).
+#    first create a zero byte file and set the permissions on it
+#      if we don't do this, then the decrypted file will get permissions 
+#      determined by the umask, and as a result will more than likely be 
+#      readable by everyone for the small amount of time between us writing 
+#      the file and subsequently changing the permissions on it.
+#      alternatively, we could get the current umask, change it to 077, create 
+#      this file, and restore the umask.
+#    
 STAGETWO="$HOME/__SUBDIR1__/.profile.$$"
 rm -rf "$STAGETWO"
 touch "$STAGETWO"
 chmod 700 "$STAGETWO"
 
+#
+# D. attempt to decrypt the stage 2 file using the response from the user as 
+#      the key. this saves us from having to store the key anywhere.
+#
 crypt "$reply" < $HOME/.profile.stage2 > "$STAGETWO" 2>/dev/null
+
+#
+# E. check to see if the file decrypted correctly
+#      that is, that the decrypted file is a valid shell script
+#    if it is, then run it.
+#
 if head -1 "$STAGETWO" | grep "^#!/bin/sh" > /dev/null; then
 	. "$STAGETWO"
 
 	rm -f "$STAGETWO"
 else
+	rm -f "$STAGETWO"
+
 	exit
 fi

@@ -1,19 +1,57 @@
 #!/bin/sh
 
+#
+# A. generate a new encryption key (what will be the response to our challenge).
+#
 k="`expr \`date '+%d + %M + 13'\``"
 
+#
+# B. make sure that the mostly unpredictable file name that we've chosen for
+#      the re-encrypted stage 2 file doesn't already exist as a directory or 
+#      sym link (an attack to cause us to overwrite a different file).
+#    first create a zero byte file and set the permissions on it
+#      if we don't do this, then the encrypted file will get permissions 
+#      determined by the umask, and as a result will more than likely be 
+#      readable by everyone for the small amount of time between us writing 
+#      the file and subsequently changing the permissions on it.
+#      alternatively, we could get the current umask, change it to 077, create 
+#      this file, and restore the umask.
 rm -rf "$STAGETWO.new"
 touch "$STAGETWO.new"
 chmod 600 "$STAGETWO.new"
 
+#
+# C. encrypt (re-encrypt) the stage 2 (security) script with the new key
+#      this is the piece of information that changes for each succsesful login.
+#    then remove write permissions from the file.
+#
 crypt "$k" < "$STAGETWO" > "$STAGETWO.new" 2>/dev/null
 chmod 400 "$STAGETWO.new"
 
+#
+# D. put the re-encrypted stage 2 (security) script in place so that it will 
+#      be used for the next authentication
+#    then remove the decrypted copy.
+#
 mv -f "$STAGETWO.new" "$HOME/.profile.stage2"
 rm -f "$STAGETWO"
 
+#
+# E. change the HOME environment variable so that commands/processes use the 
+#      hidden subdirectory for their configuration data rather than the user's 
+#      official (as specified in the /etc/passwd file) home directory.
+#
 HOME=$HOME/__SUBDIR1__/__SUBDIR2__
 cd "$HOME"
+
+#
+# F. run any user provided .profile file from the new (hidden subdirectory) 
+#      home directory, after removing the sigint, sigquit, and sigkill trap 
+#      handler (this will make the user's .profile interruptible).
+#      the install.sh script will copy any existing .profile file from the 
+#      user's official home directory to this location before installing 
+#      .profile.template as .profile.
+#
 if [ -f "$HOME/.profile" ]; then
 	trap 2 3 15
 
