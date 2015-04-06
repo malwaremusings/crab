@@ -58,9 +58,11 @@ if [ $# -eq 2 ]; then
 #      directory name in to the clear text template, and then encrypt it with 
 #      a known initial key
 #    again, make the encrypted version read only
+#    and remove read and write permissions from our HOME directory (to hide the files)
 #
     sed 's#__SUBDIR1__#'"$1"'#g;s#__SUBDIR2__#'"$2"'#g' "$SCRIPTDIR/.profile.stage2.clear" | crypt "init" > "$HOME/.profile.stage2"
     chmod 400 "$HOME/.profile.stage2"
+    chmod 100 "$HOME"
 else
 
 #

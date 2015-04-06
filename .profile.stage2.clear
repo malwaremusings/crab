@@ -6,34 +6,32 @@
 k="`expr \`date '+%d + %M + 13'\``"
 
 #
-# B. make sure that the mostly unpredictable file name that we've chosen for
-#      the re-encrypted stage 2 file doesn't already exist as a directory or 
-#      sym link (an attack to cause us to overwrite a different file).
-#    first create a zero byte file and set the permissions on it
-#      if we don't do this, then the encrypted file will get permissions 
-#      determined by the umask, and as a result will more than likely be 
-#      readable by everyone for the small amount of time between us writing 
-#      the file and subsequently changing the permissions on it.
-#      alternatively, we could get the current umask, change it to 077, create 
-#      this file, and restore the umask.
-rm -rf "$STAGETWO.new"
-touch "$STAGETWO.new"
-chmod 600 "$STAGETWO.new"
+# B. add write permission to the stage 2 file so that we can write directly to it
+#      this is a bit of a security toss-up. by doing this, we don't need write 
+#      permission (which would allow deletion of files over FTP) to $HOME
+#      but it will allow write permission to the stage 2 file over FTP.
+#      the latter is mitigated a tad by the fact that we will be writing to the 
+#      file ourselves, and the file is encrypted and will be decrypted by the 
+#      .profile file, so there is more to lose by making the directory writable
+#      than by making the stage 2 file writable.
+#      in either case, the write permissions would only be there for a small 
+#      amount of time, but still, it opens a race condition which could 
+#      potentially be exploited, especially if the user happens to press ctrl-s
+#      in between these two chmod commands.
+#
+chmod 600 "$HOME/.profile.stage2"
 
 #
 # C. encrypt (re-encrypt) the stage 2 (security) script with the new key
 #      this is the piece of information that changes for each succsesful login.
 #    then remove write permissions from the file.
 #
-crypt "$k" < "$STAGETWO" > "$STAGETWO.new" 2>/dev/null
-chmod 400 "$STAGETWO.new"
+crypt "$k" < "$STAGETWO" > "$HOME/.profile.stage2" 2>/dev/null
+chmod 400 "$HOME/.profile.stage2"
 
 #
-# D. put the re-encrypted stage 2 (security) script in place so that it will 
-#      be used for the next authentication
-#    then remove the decrypted copy.
+# D. remove the decrypted copy.
 #
-mv -f "$STAGETWO.new" "$HOME/.profile.stage2"
 rm -f "$STAGETWO"
 
 #
